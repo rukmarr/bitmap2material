@@ -1,7 +1,10 @@
 import filters
 from skimage import color, io
+from skimage.util import img_as_float
 from segmentation import generate_texture
 
+
+'''img must be float rgb image'''
 def bitmap2material(img, expand_nmap=False, verbose=False):
 
     if verbose:
@@ -74,6 +77,29 @@ def process_image(img, verbose=False):
     return bitmap2material(texture, verbose=verbose)
 
 
+def process_texture(img, verbose=False):
+    if verbose:
+        print('Step 1: square extraction.', flush=True)
+    indent = (max(img.shape[:2]) - min(img.shape[:2])) // 2
+    if img.shape[0] < img.shape[1]:
+        square_texture = img[:, indent:indent+img.shape[0]]
+    elif img.shape[0] > img.shape[1]:
+        square_texture = img[indent:indent+img.shape[1], :]
+    else:
+        square_texture = img
+
+    print(square_texture.shape)
+    io.imshow(square_texture)
+    io.show()
+
+    square_texture = img_as_float(square_texture)
+
+    if verbose:
+        print('Step 2: texture to material.', flush=True)
+    return bitmap2material(square_texture, verbose=verbose)
+
+
+
 if __name__ == "__main__":
 
     path = input('Enter image name/path: ')
@@ -84,4 +110,4 @@ if __name__ == "__main__":
     except FileNotFoundError:
         print('File don\'t exist!')
 
-    bitmap2material(img, verbose=True)
+    process_texture(img, verbose=True)
