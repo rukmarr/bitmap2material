@@ -138,7 +138,11 @@ def find_foreground(img, labels, RAG, eps=1e-4, calculate_edge_threshold=simple_
     if verbose:
         show_foreground(img, labels, queue)
         print('Filtering mask...', flush=True)
+
     foreground = post_filter(queue, labels, RAG)
+
+    if verbose:
+        show_foreground(img, labels, foreground)
 
     if binary:
         return np.isin(labels, foreground)
@@ -160,7 +164,7 @@ def generate_texture(img, slic_n=200, slic_compactness=25,
         print('Constructing superpixels...', flush=True)
     segments = slic(img, n_segments=slic_n, compactness=slic_compactness)
     if verbose:
-        out_avg = color.label2rgb(segments, img, kind='avg')
+        out_avg = color.label2rgb(segments, img, kind='avg')        
         io.imshow(out_avg)
         io.show()
 

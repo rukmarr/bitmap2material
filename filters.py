@@ -147,14 +147,18 @@ def ambient_occlusion(bump_map, n_map, intensity=1, scale=2, bias=0.5, iters=2, 
     return ao_map
 
 
-def generate_seamless_kernel(shape, radius):
+def generate_seamless_kernel(shape, radius1, radius2):
 
-    kernel = np.zeros(shape)
+    kernel = np.ones(shape)
     center = (shape[0] // 2, shape[1] // 2)
 
     for pnt in np.ndindex(shape):
-        dist = np.linalg.norm(np.array(pnt) - np.array(center))
-        kernel[pnt] = max(1 - dist/radius, 0)
+
+        corner = (shape[0] - 1 if pnt[0] > center[0] else 0, shape[1] - 1 if pnt[1] > center[1] else 0)
+
+        dist = np.linalg.norm(np.array(pnt) - np.array(corner))
+
+        kernel[pnt] = max((dist - radius1) / (radius2 - radius1), 0) if dist < radius2 else 1
 
     return kernel
 
@@ -187,7 +191,7 @@ def weld_images(img1, img2, overlay, axis):
     return res
 
 sign = lambda x: 1 if x >= 0 else -1
-def make_seamless(img, overlay_coef=0.1, verbose=False):
+def make_seamless(img, overlay_coef=0., verbose=False):
     overlay = int(overlay_coef * min(img.shape[:2]))
     overlay -= overlay % 2
     center = (img.shape[0] // 2, img.shape[1] // 2)
@@ -199,16 +203,19 @@ def make_seamless(img, overlay_coef=0.1, verbose=False):
 
     out_seamless = weld_images(left, right,overlay, 1)
 
-    if verbose:
-        print(img.shape)
-        print(out_seamless.shape)
+    radius = min(img.shape[:2]) // 2 - 2
+    kernel = generate_seamless_kernel(img.shape[:2], 0.7 * radius, radius)
 
+    io.imshow(kernel)
+    io.show()
+
+    for x, y in np.ndindex(img.shape[:2]):
+        out_seamless[x, y] = kernel[x,y]*img[x,y] + (1 - kernel[x,y])*out_seamless[x,y]
+
+    if verbose:
         io.imshow(out_seamless)
         io.show()
 
-    kernel = generate_seamless_kernel(img.shape[:2], min(img.shape[:2])/2 - 2)
-    for x, y in np.ndindex(img.shape[:2]):
-        out_seamless[x, y] = kernel[x,y]*img[x,y] + (1 - kernel[x,y])*out_seamless[x,y]
 
     return out_seamless
 
@@ -236,7 +243,7 @@ def make_specular_map(grey_img, sigma=1, k=1.5, min_value=0.4):
 
 
 if __name__ == "__main__":
-
+    #"""
     path = input('Enter image name/path: ')
     #path = '../data/test_sobel.jpg'
 
@@ -249,7 +256,8 @@ if __name__ == "__main__":
     img = img_as_float(img)
 
     print('Making seamless texture...', flush=True)
-    img = make_seamless(img)
+    img = make_seamless(img, verbose=True)
+    io.imsave('out/seamless.png', img)
     gray_img = color.rgb2gray(img)
     print('...done', flush=True)
     io.imshow(img) and io.show()
@@ -267,20 +275,27 @@ if __name__ == "__main__":
     io.imshow(n_map) and io.show()
     #'''
 
+    io.imsave('out/n_map.png', n_map)
+
     print('Computing bump map...', flush=True)
     bump_map = bump_from_normal(n_map, initial_value=gray_img, verbose=False)[0]
     print('...done', flush=True)
     io.imshow(bump_map) and io.show()
+
+    io.imsave('out/bump_map.png', bump_map)
 
     print('Making Ambient Occlusion map...', flush=True)
     ao_map = ambient_occlusion(bump_map, n_map, verbose=True)
     print('...done', flush=True)
     io.imshow(ao_map, cmap='gray') and io.show()
 
+    io.imsave('out/ao_map.png', ao_map)
+
     print('Making specular map...', flush=True)
     specular_map = make_specular_map(gray_img)
     print('...done', flush=True)
     io.imshow(specular_map, cmap='gray') and io.show()
 
+    io.imsave('out/specular_map.png', specular_map)
 
     print('...ready!', flush=True)
